@@ -1,18 +1,48 @@
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/ptrace.h>
+#include <sys/wait.h>
+#include <sys/user.h>
+#include <sys/syscall.h>
 
-// TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 
-int main() {
-    // TIP Press <shortcut actionId="RenameElement"/> when your caret is at the <b>lang</b> variable name to see how CLion can help you rename it.
+pid_t trace_target(pid_t pid) {
+    int status;
+    struct user_regs_struct regs;
 
-    const auto lang = "C++";
-    std::cout << "Hello and welcome to " << lang << "!\n";
+    while (!WEIFEXITED(status)) {
+        //wait for the program to use a syscall and then print the syscall number
+        ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+        wait(&status);
+        ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+        std::cout << "syscall used: " << regs->orig_rax << "\n";
+        ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+        wait(&status);
 
-    for (int i = 1; i <= 5; i++) {
-        // TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-        std::cout << "i = " << i << std::endl;
+
+        wait(&status)
     }
+}
 
-    return 0;
-    // TIP See CLion help at <a href="https://www.jetbrains.com/help/clion/">jetbrains.com/help/clion/</a>. Also, you can try interactive lessons for CLion by selecting 'Help | Learn IDE Features' from the main menu.
+pid_t run_target(const char* path) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+        execve(path, , );
+    }
+    if (pid > 0) {
+        trace_target(pid);
+    }
+    else {
+        std::cerr << "fork failed\n";
+    }
+}
+
+
+
+
+int main(int argc, char* argv[]) {
+    run_target();
 }
