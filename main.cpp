@@ -17,6 +17,9 @@ void handle_syscall(const user_regs_struct& regs) {
         case 59: //execve syscall
             std::cout << "memory address of path: " << regs.rdi <<"\n";
             break;
+        case 257: //openat syscall
+            std::cout << "memory address of path: " << regs.rsi << "\n";
+            break;
     }
 }
 
