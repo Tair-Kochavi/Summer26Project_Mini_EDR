@@ -9,6 +9,9 @@
 #define PATH_MAX 4096
 
 
+std::string get_path(pid_t pid, unsigned long long addr);
+
+
 /**
  *
  * @param regs register values of the child process after it called a syscall
@@ -17,13 +20,13 @@
 void handle_syscall(const user_regs_struct& regs, pid_t pid) {
     switch (regs.orig_rax) {
         case 2:  //open syscall
-            std::cout << "memory address of path: " << regs.rdi <<"\n";
+            std::cout << "process attempting to open: " << get_path(pid, regs.rdi) <<"\n";
             break;
         case 59: //execve syscall
-            std::cout << "memory address of path: " << regs.rdi <<"\n";
+            std::cout << "process attempting to open: " << get_path(pid, regs.rdi) <<"\n";
             break;
         case 257: //openat syscall
-            std::cout << "memory address of path: " << regs.rsi << "\n";
+            std::cout << "process attempting to open: " << get_path(pid, regs.rsi) <<"\n";
             break;
     }
 }
@@ -42,23 +45,26 @@ std::string get_path(pid_t pid, unsigned long long addr) {
     std::string path = "";
     long to_append = 0;
     while (bytes < PATH_MAX) {
+        errno = 0;
         long res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+
+        if (res == -1 && errno != 0) {       //error occurred in ptrace
+            return "";
+        }
         bytes += 8;
+        addr += 8;
         for (int i = 0; i < 8; i++) {
-            long mask = 0x0000000F;
-            to_append = res & mask;
-            if (to_append == 0) {
-                break;
+            long mask = 0xFF;
+            to_append = res & mask;  //extracting bottom byte
+            if (to_append == 0) {   //got to a null terminator
+                return path;
             }
-            path += std::to_string(to_append);
+            path += static_cast<char>(to_append);
 
             res = res >> 8;
         }
     }
-    if (to_append != 0) {  //not null terminated - path too long
-
-    }
-    return path;
+    return ""; //not null terminated - path too long
 }
 
 
