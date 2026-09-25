@@ -20,14 +20,36 @@ std::string get_path(pid_t pid, unsigned long long addr);
 void handle_syscall(const user_regs_struct& regs, pid_t pid) {
     switch (regs.orig_rax) {
         case 2:  //open syscall
-            std::cout << "process attempting to open: " << get_path(pid, regs.rdi) <<"\n";
+        {
+            std::string path = get_path(pid, regs.rdi);
+            if (path == "") {
+                std::cout << "illegal path" << "\n";
+                return;
+            }
+            std::cout << "process attempting to open: " << path <<"\n";
+        }
             break;
         case 59: //execve syscall
-            std::cout << "process attempting to open: " << get_path(pid, regs.rdi) <<"\n";
+        {
+            std::string path = get_path(pid, regs.rdi);
+            if (path == "") {
+                std::cout << "illegal path" << "\n";
+                return;
+            }
+            std::cout << "process attempting to open: " << path <<"\n";
+        }
             break;
         case 257: //openat syscall
-            std::cout << "process attempting to open: " << get_path(pid, regs.rsi) <<"\n";
+        {
+            std::string path = get_path(pid, regs.rsi);
+            if (path == "") {
+                std::cout << "illegal path" << "\n";
+                return;
+            }
+            std::cout << "process attempting to open: " << path <<"\n";
+        }
             break;
+        default: ;
     }
 }
 
