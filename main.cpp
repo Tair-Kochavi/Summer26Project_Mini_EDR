@@ -11,7 +11,7 @@
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
-void print_info(const unsigned long long num, const std::string& path, const std::string& warning);
+void compress_info(syscall_info& info, unsigned long long num, const std::string& path, const std::string& warning);
 
 
 /**
@@ -19,39 +19,36 @@ void print_info(const unsigned long long num, const std::string& path, const std
  * @param regs register values of the child process after it called a syscall
  * @param pid the pid of the child process
  */
-void handle_syscall(const user_regs_struct& regs, pid_t pid) {
+void handle_syscall(syscall_info& info, const user_regs_struct& regs, pid_t pid) {
     switch (regs.orig_rax) {
         case 2:  //open syscall
         {
             std::string path = get_path(pid, regs.rdi);
             if (path == "") {
-                print_info(regs.orig_rax, path, "attempted to access illegal path");
-                return;
+                compress_info(info, regs.orig_rax, path, "attempted to access illegal path");
             }
-            print_info(regs.orig_rax, path, "");
+            compress_info(info, regs.orig_rax, path, "");
         }
             break;
         case 59: //execve syscall
         {
             std::string path = get_path(pid, regs.rdi);
             if (path == "") {
-                print_info(regs.orig_rax, path, "attempted to access illegal path");
-                return;
+                compress_info(info, regs.orig_rax, path, "attempted to access illegal path");
             }
-            print_info(regs.orig_rax, path, "");
+            compress_info(info, regs.orig_rax, path, "");
         }
             break;
         case 257: //openat syscall
         {
             std::string path = get_path(pid, regs.rsi);
             if (path == "") {
-                print_info(regs.orig_rax, path, "attempted to access illegal path");
-                return;
+                compress_info(info, regs.orig_rax, path, "attempted to access illegal path");
             }
-            print_info(regs.orig_rax, path, "");
+            compress_info(info, regs.orig_rax, path, "");
         }
             break;
-        default: print_info(regs.orig_rax, "", "");
+        default: compress_info(info, regs.orig_rax, "", "");
     }
 }
 
@@ -92,12 +89,10 @@ std::string get_path(pid_t pid, unsigned long long addr) {
 }
 
 
-void print_info(const unsigned long long num, const std::string& path, const std::string& warning) {
-    syscall_info info;
+void compress_info(syscall_info& info, unsigned long long num, const std::string& path, const std::string& warning) {
     info.path = path;
     info.sys_num = num;
     info.warning = warning;
-    log_syscall(info);
 }
 
 
@@ -109,15 +104,22 @@ pid_t trace_target(pid_t pid) {
 
     wait(&status);
     while (!WIFEXITED(status)) {
+        syscall_info info;
+
         //wait for the program to use a syscall and then print the syscall number
         ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
         wait(&status);
         if (!WIFEXITED(status)) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-            handle_syscall(regs, pid);
+            handle_syscall(info, regs, pid);
         }
         ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
         wait(&status);
+        if (!WIFEXITED(status)) {
+            ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+            info.ret_val = static_cast<long>(regs.rax);
+            log_syscall(info);
+        }
     }
 
     return status;

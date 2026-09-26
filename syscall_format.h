@@ -5,6 +5,7 @@
 
 struct syscall_info {
     unsigned long long sys_num;
+    long ret_val = -1; //default value
     std::string path;
     std::string warning;
 };

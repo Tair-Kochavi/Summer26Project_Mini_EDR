@@ -43,7 +43,11 @@ void log_syscall(const syscall_info& info) {
         return;
     }
     if (sys_info.second != "") {
-        std::cout  << " | " << "INFO: " << sys_info.second;
+        if (info.ret_val < 0) {
+            std::cout  << " | " << "INFO: error occurred, returned value: " << std::to_string(info.ret_val);
+        } else {
+            std::cout  << " | " << "INFO: " << sys_info.second;
+        }
     }
     if (info.path != "") {
         std::cout  << " | " << "PATH: " << info.path << "\n";
