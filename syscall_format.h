@@ -4,9 +4,9 @@
 
 
 struct syscall_info {
-    int sys_num;
+    unsigned long long sys_num;
     std::string path;
 };
 
-std::pair<std::string, std::string> get_syscall_name(const int num);
+std::pair<std::string, std::string> get_syscall_name(unsigned long long num);
 void log_syscall(const syscall_info& info);

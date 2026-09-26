@@ -6,10 +6,12 @@
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <sys/syscall.h>
+#include "syscall_format.h"
 #define PATH_MAX 4096
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
+void print_info(const unsigned long long num, const std::string& path);
 
 
 /**
@@ -26,7 +28,7 @@ void handle_syscall(const user_regs_struct& regs, pid_t pid) {
                 std::cout << "illegal path" << "\n";
                 return;
             }
-            std::cout << "process attempting to open: " << path <<"\n";
+            print_info(regs.orig_rax, path);
         }
             break;
         case 59: //execve syscall
@@ -36,7 +38,7 @@ void handle_syscall(const user_regs_struct& regs, pid_t pid) {
                 std::cout << "illegal path" << "\n";
                 return;
             }
-            std::cout << "process attempting to open: " << path <<"\n";
+            print_info(regs.orig_rax, path);
         }
             break;
         case 257: //openat syscall
@@ -46,10 +48,10 @@ void handle_syscall(const user_regs_struct& regs, pid_t pid) {
                 std::cout << "illegal path" << "\n";
                 return;
             }
-            std::cout << "process attempting to open: " << path <<"\n";
+            print_info(regs.orig_rax, path);
         }
             break;
-        default: ;
+        default: print_info(regs.orig_rax, "");
     }
 }
 
@@ -87,6 +89,14 @@ std::string get_path(pid_t pid, unsigned long long addr) {
         }
     }
     return ""; //not null terminated - path too long
+}
+
+
+void print_info(const unsigned long long num, const std::string& path) {
+    syscall_info info;
+    info.path = path;
+    info.sys_num = num;
+    log_syscall(info);
 }
 
 
