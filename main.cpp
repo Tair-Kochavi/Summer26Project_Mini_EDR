@@ -11,7 +11,7 @@
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
-void print_info(const unsigned long long num, const std::string& path);
+void print_info(const unsigned long long num, const std::string& path, const std::string& warning);
 
 
 /**
@@ -25,33 +25,33 @@ void handle_syscall(const user_regs_struct& regs, pid_t pid) {
         {
             std::string path = get_path(pid, regs.rdi);
             if (path == "") {
-                std::cout << "illegal path" << "\n";
+                print_info(regs.orig_rax, path, "attempted to access illegal path");
                 return;
             }
-            print_info(regs.orig_rax, path);
+            print_info(regs.orig_rax, path, "");
         }
             break;
         case 59: //execve syscall
         {
             std::string path = get_path(pid, regs.rdi);
             if (path == "") {
-                std::cout << "illegal path" << "\n";
+                print_info(regs.orig_rax, path, "attempted to access illegal path");
                 return;
             }
-            print_info(regs.orig_rax, path);
+            print_info(regs.orig_rax, path, "");
         }
             break;
         case 257: //openat syscall
         {
             std::string path = get_path(pid, regs.rsi);
             if (path == "") {
-                std::cout << "illegal path" << "\n";
+                print_info(regs.orig_rax, path, "attempted to access illegal path");
                 return;
             }
-            print_info(regs.orig_rax, path);
+            print_info(regs.orig_rax, path, "");
         }
             break;
-        default: print_info(regs.orig_rax, "");
+        default: print_info(regs.orig_rax, "", "");
     }
 }
 
@@ -92,10 +92,11 @@ std::string get_path(pid_t pid, unsigned long long addr) {
 }
 
 
-void print_info(const unsigned long long num, const std::string& path) {
+void print_info(const unsigned long long num, const std::string& path, const std::string& warning) {
     syscall_info info;
     info.path = path;
     info.sys_num = num;
+    info.warning = warning;
     log_syscall(info);
 }
 
@@ -113,7 +114,6 @@ pid_t trace_target(pid_t pid) {
         wait(&status);
         if (!WIFEXITED(status)) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-            std::cout << "syscall used: " << regs.orig_rax << "\n";
             handle_syscall(regs, pid);
         }
         ptrace(PTRACE_SYSCALL, pid, NULL, NULL);

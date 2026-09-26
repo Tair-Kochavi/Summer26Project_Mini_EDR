@@ -25,7 +25,7 @@ std::pair<std::string, std::string> get_syscall_name(const unsigned long long nu
     if (it != sys_map.end()) {  //syscall number found in sys_map
         return it->second;
     }
-    return {"SYS_" + std::to_string(num), ""};
+    return {"", ""};
 }
 
 /**
@@ -34,9 +34,20 @@ std::pair<std::string, std::string> get_syscall_name(const unsigned long long nu
  */
 void log_syscall(const syscall_info& info) {
     std::pair<std::string, std::string> sys_info = get_syscall_name(info.sys_num);
-    std::cout << "[SYSCALL] " << sys_info.first << " | ";
-    std::cout << "INFO: " << sys_info.second << " | ";
-    if (info.path != "") {
-        std::cout << "PATH: " << info.path << "\n";
+    if (sys_info.first == "") {
+        return;
     }
+    std::cout << "[SYSCALL] " << sys_info.first;
+    if (info.warning != "") {
+        std::cout << " | " << "[WARNING]: " << info.warning << "\n";
+        return;
+    }
+    if (sys_info.second != "") {
+        std::cout  << " | " << "INFO: " << sys_info.second;
+    }
+    if (info.path != "") {
+        std::cout  << " | " << "PATH: " << info.path << "\n";
+        return;
+    }
+    std::cout << "\n";
 }
