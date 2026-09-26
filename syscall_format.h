@@ -9,4 +9,4 @@ struct syscall_info {
 };
 
 std::pair<std::string, std::string> get_syscall_name(const int num);
-void log_syscall(const syscall_info info);
+void log_syscall(const syscall_info& info);

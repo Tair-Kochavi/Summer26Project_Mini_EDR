@@ -28,8 +28,15 @@ std::pair<std::string, std::string> get_syscall_name(const int num) {
     return {"SYS_" + std::to_string(num), ""};
 }
 
-
-void log_syscall(const syscall_info info) {
+/**
+ *
+ * @param info syscall information
+ */
+void log_syscall(const syscall_info& info) {
     std::pair<std::string, std::string> sys_info = get_syscall_name(info.sys_num);
-
+    std::cout << "[SYSCALL] " << sys_info.first << " | ";
+    std::cout << "INFO: " << sys_info.second << " | ";
+    if (info.path != "") {
+        std::cout << "PATH: " << info.path << "\n";
+    }
 }
