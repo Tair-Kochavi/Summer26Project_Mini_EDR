@@ -38,6 +38,10 @@ void log_syscall(const syscall_info& info) {
         return;
     }
     std::cout << "[SYSCALL] " << sys_info.first;
+    if (info.blocked) {
+        std::cout << "[BLOCKED] tried to access " << info.path << ", permission denied \n";
+        return;
+    }
     if (info.warning != "") {
         std::cout << " | " << "[WARNING]: " << info.warning << "\n";
         return;
