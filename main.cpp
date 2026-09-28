@@ -6,12 +6,14 @@
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <sys/syscall.h>
+
+#include "blacklist.h"
 #include "syscall_format.h"
 #define PATH_MAX 4096
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
-void compress_info(syscall_info& info, unsigned long long num, const std::string& path, const std::string& warning);
+void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid);
 
 
 /**
@@ -23,35 +25,44 @@ void handle_syscall(syscall_info& info, const user_regs_struct& regs, pid_t pid)
     switch (regs.orig_rax) {
         case 2:  //open syscall
         {
-            std::string path = get_path(pid, regs.rdi);
-            if (path == "") {
-                compress_info(info, regs.orig_rax, path, "attempted to access illegal path");
-            }
-            compress_info(info, regs.orig_rax, path, "");
+           compress_info(info, regs.orig_rax, regs.rdi, pid);
         }
             break;
         case 59: //execve syscall
         {
-            std::string path = get_path(pid, regs.rdi);
-            if (path == "") {
-                compress_info(info, regs.orig_rax, path, "attempted to access illegal path");
-            }
-            compress_info(info, regs.orig_rax, path, "");
+            compress_info(info, regs.orig_rax, regs.rdi, pid);
         }
             break;
         case 257: //openat syscall
         {
-            std::string path = get_path(pid, regs.rsi);
-            if (path == "") {
-                compress_info(info, regs.orig_rax, path, "attempted to access illegal path");
-            }
-            compress_info(info, regs.orig_rax, path, "");
+           compress_info(info, regs.orig_rax, regs.rsi, pid);
         }
             break;
-        default: compress_info(info, regs.orig_rax, "", "");
+        default: compress_info(info, regs.orig_rax, 0, -1);
     }
 }
 
+
+
+void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid){
+    if (pid == -1) {   //if it's a general syscall - pid will be -1
+        info.warning = "";
+        info.path = "";
+        info.sys_num = num;
+        return;
+    }
+    std::string path = get_path(pid, addr);
+    if (path == "") {
+        info.warning = "attempted to access illegal path";
+    } else {
+        info.warning = "";
+    }
+    if (check_path(path)) {
+        info.blocked = true;
+    }
+    info.path = path;
+    info.sys_num = num;
+}
 
 
 
@@ -89,12 +100,6 @@ std::string get_path(pid_t pid, unsigned long long addr) {
 }
 
 
-void compress_info(syscall_info& info, unsigned long long num, const std::string& path, const std::string& warning) {
-    info.path = path;
-    info.sys_num = num;
-    info.warning = warning;
-}
-
 
 
 
@@ -106,7 +111,7 @@ pid_t trace_target(pid_t pid) {
     while (!WIFEXITED(status)) {
         syscall_info info;
 
-        //wait for the program to use a syscall and then print the syscall number
+        //wait for the program to use a syscall
         ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
         wait(&status);
         if (!WIFEXITED(status)) {

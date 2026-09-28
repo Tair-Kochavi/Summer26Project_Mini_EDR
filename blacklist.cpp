@@ -7,6 +7,11 @@ namespace {
 }
 
 
+/**
+ *
+ * @param path path to file that needs to be checked
+ * @return true if the file is blacklisted and false otherwise
+ */
 bool check_path(const std::string& path) {
     size_t pos = path.find_last_of('/');
     std::string name = path;         //if  / wasn't found - the path is the file name

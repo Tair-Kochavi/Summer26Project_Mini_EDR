@@ -34,7 +34,7 @@ std::pair<std::string, std::string> get_syscall_name(const unsigned long long nu
  */
 void log_syscall(const syscall_info& info) {
     std::pair<std::string, std::string> sys_info = get_syscall_name(info.sys_num);
-    if (sys_info.first == "") {
+    if (sys_info.first == "") { //syscall not found in map
         return;
     }
     std::cout << "[SYSCALL] " << sys_info.first;
