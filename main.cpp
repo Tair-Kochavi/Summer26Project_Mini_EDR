@@ -13,7 +13,7 @@
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
-void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid);
+void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid, user_regs_struct& regs);
 
 
 /**
@@ -21,30 +21,31 @@ void compress_info(syscall_info& info, unsigned long long num, unsigned long lon
  * @param regs register values of the child process after it called a syscall
  * @param pid the pid of the child process
  */
-void handle_syscall(syscall_info& info, const user_regs_struct& regs, pid_t pid) {
+void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
     switch (regs.orig_rax) {
         case 2:  //open syscall
         {
-           compress_info(info, regs.orig_rax, regs.rdi, pid);
+           compress_info(info, regs.orig_rax, regs.rdi, pid, regs);
         }
             break;
         case 59: //execve syscall
         {
-            compress_info(info, regs.orig_rax, regs.rdi, pid);
+            compress_info(info, regs.orig_rax, regs.rdi, pid, regs);
         }
             break;
         case 257: //openat syscall
         {
-           compress_info(info, regs.orig_rax, regs.rsi, pid);
+           compress_info(info, regs.orig_rax, regs.rsi, pid, regs);
         }
             break;
-        default: compress_info(info, regs.orig_rax, 0, -1);
+        default: compress_info(info, regs.orig_rax, 0, -1, regs);
     }
 }
 
 
 
-void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid){
+void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
+    user_regs_struct& regs){
     if (pid == -1) {   //if it's a general syscall - pid will be -1
         info.warning = "";
         info.path = "";
@@ -59,6 +60,8 @@ void compress_info(syscall_info& info, unsigned long long num, unsigned long lon
     }
     if (check_path(path)) {
         info.blocked = true;
+        regs.orig_rax = -1;   //intentionally changing syscall service num to out of range num
+        ptrace(PTRACE_SETREGS, pid, NULL, &regs);
     }
     info.path = path;
     info.sys_num = num;
@@ -122,6 +125,9 @@ pid_t trace_target(pid_t pid) {
         wait(&status);
         if (!WIFEXITED(status)) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+            if (info.blocked) {
+                regs.rax = EACCES;      //return value - permission denied
+            }
             info.ret_val = static_cast<long>(regs.rax);
             log_syscall(info);
         }
