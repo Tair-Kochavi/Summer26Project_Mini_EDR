@@ -127,6 +127,7 @@ pid_t trace_target(pid_t pid) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
             if (info.blocked) {
                 regs.rax = EACCES;      //return value - permission denied
+                ptrace(PTRACE_SETREGS, pid, NULL, &regs); 
             }
             info.ret_val = static_cast<long>(regs.rax);
             log_syscall(info);
