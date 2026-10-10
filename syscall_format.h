@@ -6,9 +6,10 @@
 struct syscall_info {
     unsigned long long sys_num;
     long ret_val = -1; //default value
-    std::string path;
+    std::string target;
     std::string warning;
     bool blocked = false;
+    long error_code = 0;
 };
 
 std::pair<std::string, std::string> get_syscall_name(unsigned long long num);

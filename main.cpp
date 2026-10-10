@@ -48,7 +48,7 @@ void compress_info(syscall_info& info, unsigned long long num, unsigned long lon
     user_regs_struct& regs){
     if (pid == -1) {   //if it's a general syscall - pid will be -1
         info.warning = "";
-        info.path = "";
+        info.target = "";
         info.sys_num = num;
         return;
     }
@@ -63,7 +63,7 @@ void compress_info(syscall_info& info, unsigned long long num, unsigned long lon
         regs.orig_rax = -1;   //intentionally changing syscall service num to out of range num
         ptrace(PTRACE_SETREGS, pid, NULL, &regs);
     }
-    info.path = path;
+    info.target = path;
     info.sys_num = num;
 }
 
