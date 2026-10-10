@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <sys/syscall.h>
+#include <sys/socket.h>
 
 #include "blacklist.h"
 #include "syscall_format.h"
@@ -14,7 +15,7 @@
 
 std::string get_path(pid_t pid, unsigned long long addr);
 void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid, user_regs_struct& regs);
-
+std::string get_connection(pid_t pid, unsigned long long addr);
 
 /**
  *
@@ -101,6 +102,42 @@ std::string get_path(pid_t pid, unsigned long long addr) {
     }
     return ""; //not null terminated - path too long
 }
+
+
+
+std::string get_connection(pid_t pid, unsigned long long addr) {
+    std::string port = "";
+    std::string IP_string = "";
+    errno = 0;
+    long res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+
+    if (res == -1 && errno != 0) {       //error occurred in ptrace
+        return "";
+    }
+    port = std::to_string(res & 0xFFFF0000); //extracting the port - the next two bytes
+
+    if ((res & 0xFFFF) == AF_INET) { //checking in the first two bytes if the version is IPv4
+        IP_string = std::to_string(res & 0xFFFFFFFF00000000); //extracting the IP - the next four bytes
+        return (port + ":" + IP_string);
+    }
+
+    //handling IPv6
+    addr += 8;
+    errno = 0;
+    res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+    if (res == -1 && errno != 0) {       //error occurred in ptrace
+        return "";
+    }
+
+    addr += 8;
+    errno = 0;
+    res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+    if (res == -1 && errno != 0) {       //error occurred in ptrace
+        return "";
+    }
+
+}
+
 
 
 
