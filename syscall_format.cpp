@@ -11,7 +11,8 @@ namespace {
         {2, {"open", "file access"}},
         {3, {"close", "resource release"}},
         {59, {"execve", "process execution"}},
-        {257, {"openat", "file access"}}
+        {257, {"openat", "file access"}},
+        {42, {"connect", "network connection"}}
     };
 }
 
