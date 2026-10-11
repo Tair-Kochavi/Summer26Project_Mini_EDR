@@ -7,7 +7,9 @@ add_executable(mini_edr main.cpp
         syscall_format.cpp
         syscall_format.h
         blacklist.cpp
-        blacklist.h)
+        blacklist.h
+        nw_blacklist.cpp
+        nw_blacklist.h)
 add_executable(test1 tests/week1_basic_syscalls/test1.cpp)
 add_executable(test2 tests/week1_basic_syscalls/test2.cpp)
 add_executable(test3 tests/week1_basic_syscalls/test3.cpp)
