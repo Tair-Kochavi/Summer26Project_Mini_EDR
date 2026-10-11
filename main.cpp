@@ -13,15 +13,18 @@
 
 #include "blacklist.h"
 #include "syscall_format.h"
+#include "nw_blacklist.h"
 #define PATH_MAX 4096
 #define MAX_V4 16  //max IP address characters for IPv4
 #define MAX_V6 46 //max IP address characters for IPv6
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
-void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid, user_regs_struct& regs);
+void process_file(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid, user_regs_struct& regs);
 std::string get_connection(pid_t pid, unsigned long long addr);
 bool peek_for_connection(pid_t pid, unsigned long long addr, char* info, int offset);
+void process_network(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
+    user_regs_struct& regs);
 
 /**
  *
@@ -32,33 +35,53 @@ void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
     switch (regs.orig_rax) {
         case 2:  //open syscall
         {
-           compress_info(info, regs.orig_rax, regs.rdi, pid, regs);
+           process_file(info, regs.orig_rax, regs.rdi, pid, regs);
         }
             break;
         case 59: //execve syscall
         {
-            compress_info(info, regs.orig_rax, regs.rdi, pid, regs);
+            process_file(info, regs.orig_rax, regs.rdi, pid, regs);
         }
             break;
         case 257: //openat syscall
         {
-           compress_info(info, regs.orig_rax, regs.rsi, pid, regs);
+           process_file(info, regs.orig_rax, regs.rsi, pid, regs);
         }
             break;
-        default: compress_info(info, regs.orig_rax, 0, -1, regs);
+        case 42: //connect syscall
+        {
+            process_network(info, regs.orig_rax, regs.rsi, pid, regs);
+        }
+            break;
+        default:
+            info.warning = "";
+            info.target = "";
+            info.sys_num = regs.orig_rax;
     }
 }
 
 
-
-void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
-    user_regs_struct& regs){
-    if (pid == -1) {   //if it's a general syscall - pid will be -1
+void process_network(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
+                     user_regs_struct& regs) {
+    std::string connection = get_connection(pid, addr);
+    if (connection == "") {
+        info.warning = "invalid network pointer";
+    } else {
         info.warning = "";
-        info.target = "";
-        info.sys_num = num;
-        return;
     }
+    if (check_connection(connection)) { //process tried making an illegal connection
+        info.blocked = true;
+        info.error_code = -EPERM; //connection is in the blacklist therefore not permitted
+        regs.orig_rax = -1;   //intentionally changing syscall service num to out of range num
+        ptrace(PTRACE_SETREGS, pid, NULL, &regs);
+    }
+    info.target = connection;
+    info.sys_num = num;
+}
+
+
+void process_file(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
+    user_regs_struct& regs){
     std::string path = get_path(pid, addr);
     if (path == "") {
         info.warning = "attempted to access illegal path";
@@ -67,6 +90,7 @@ void compress_info(syscall_info& info, unsigned long long num, unsigned long lon
     }
     if (check_path(path)) {
         info.blocked = true;
+        info.error_code = -EACCES;
         regs.orig_rax = -1;   //intentionally changing syscall service num to out of range num
         ptrace(PTRACE_SETREGS, pid, NULL, &regs);
     }
