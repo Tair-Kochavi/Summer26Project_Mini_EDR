@@ -1,8 +1,8 @@
 #include "nw_blacklist.h"
-
+#include <unordered_set>
 
 namespace {
-    const std::unordered_set<std::string> blacklist = {};
+    const std::unordered_set<std::string> blacklist = {"198.51.100.1:8080", "2001:db8::1:443"};
 }
 
 
