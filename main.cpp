@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,15 +9,19 @@
 #include <sys/user.h>
 #include <sys/syscall.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include "blacklist.h"
 #include "syscall_format.h"
 #define PATH_MAX 4096
+#define MAX_V4 16  //max IP address characters for IPv4
+#define MAX_V6 46 //max IP address characters for IPv6
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
 void compress_info(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid, user_regs_struct& regs);
 std::string get_connection(pid_t pid, unsigned long long addr);
+bool peek_for_connection(pid_t pid, unsigned long long addr, char* info, int offset);
 
 /**
  *
@@ -106,38 +112,47 @@ std::string get_path(pid_t pid, unsigned long long addr) {
 
 
 std::string get_connection(pid_t pid, unsigned long long addr) {
-    std::string port = "";
-    std::string IP_string = "";
-    errno = 0;
-    long res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
-
-    if (res == -1 && errno != 0) {       //error occurred in ptrace
+    char info[24];
+    if (!peek_for_connection(pid, addr, info, 0)) {
         return "";
     }
-    port = std::to_string(res & 0xFFFF0000); //extracting the port - the next two bytes
 
-    if ((res & 0xFFFF) == AF_INET) { //checking in the first two bytes if the version is IPv4
-        IP_string = std::to_string(res & 0xFFFFFFFF00000000); //extracting the IP - the next four bytes
-        return (port + ":" + IP_string);
+    uint16_t port, ipv;
+    memcpy(&port, info + 2, 2); //copying the port from the info buffer
+    memcpy(&ipv, info, 2); //copying the IP version from the info buffer
+
+    if (ipv == AF_INET) { //checking in the first two bytes if the version is IPv4
+        char buff[MAX_V4];
+        inet_ntop(AF_INET, info + 4, buff, MAX_V4);
+        return std::string(buff) + ":" + std::to_string(ntohs(port));
     }
 
     //handling IPv6
     addr += 8;
-    errno = 0;
-    res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
-    if (res == -1 && errno != 0) {       //error occurred in ptrace
+    if (!peek_for_connection(pid, addr, info, 8)) {
         return "";
     }
 
     addr += 8;
-    errno = 0;
-    res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
-    if (res == -1 && errno != 0) {       //error occurred in ptrace
+    if (!peek_for_connection(pid, addr, info, 16)) {
         return "";
     }
 
+    char buff[MAX_V6];
+    inet_ntop(AF_INET6, info + 8, buff, MAX_V6);
+    return std::string(buff) + ":" + std::to_string(ntohs(port));
 }
 
+
+bool peek_for_connection(pid_t pid, unsigned long long addr, char* info, int offset) {
+    errno = 0;
+    long res = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+    if (res == -1 && errno != 0) {       //error occurred in ptrace
+        return false;
+    }
+    memcpy(info + offset, &res, 8);
+    return true;
+}
 
 
 
