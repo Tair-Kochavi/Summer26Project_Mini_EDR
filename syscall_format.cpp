@@ -40,6 +40,10 @@ void log_syscall(const syscall_info& info) {
     }
     std::cout << "[SYSCALL] " << sys_info.first;
     if (info.blocked) {
+        if (info.sys_num == 42) { //connect syscall
+            std::cout << " | [BLOCKED] tried to connect to " << info.target << ": connection not permitted \n";
+            return;
+        }
         std::cout << " | [BLOCKED] tried to access " << info.target << ": permission denied \n";
         return;
     }
@@ -55,7 +59,7 @@ void log_syscall(const syscall_info& info) {
         }
     }
     if (info.target != "") {
-        std::cout  << " | " << "PATH: " << info.target << "\n";
+        std::cout  << " | " << "TARGET: " << info.target << "\n";
         return;
     }
     std::cout << "\n";
