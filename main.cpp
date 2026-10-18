@@ -21,10 +21,10 @@
 
 
 std::string get_path(pid_t pid, unsigned long long addr);
-void process_file(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid, user_regs_struct& regs);
+void process_file(syscall_info& info, unsigned long long addr, pid_t pid, user_regs_struct& regs);
 std::string get_connection(pid_t pid, unsigned long long addr);
 bool peek_for_connection(pid_t pid, unsigned long long addr, char* info, int offset);
-void process_network(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
+void process_network(syscall_info& info, unsigned long long addr, pid_t pid,
     user_regs_struct& regs);
 void check_prot(unsigned long long flags, syscall_info& info, user_regs_struct& regs, pid_t pid);
 
@@ -35,25 +35,26 @@ void check_prot(unsigned long long flags, syscall_info& info, user_regs_struct& 
  * @param pid the pid of the child process
  */
 void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
+    info.sys_num = regs.orig_rax;
     switch (regs.orig_rax) {
         case 2:  //open syscall
         {
-           process_file(info, regs.orig_rax, regs.rdi, pid, regs);
+           process_file(info, regs.rdi, pid, regs);
         }
             break;
         case 59: //execve syscall
         {
-            process_file(info, regs.orig_rax, regs.rdi, pid, regs);
+            process_file(info, regs.rdi, pid, regs);
         }
             break;
         case 257: //openat syscall
         {
-           process_file(info, regs.orig_rax, regs.rsi, pid, regs);
+           process_file(info, regs.rsi, pid, regs);
         }
             break;
         case 42: //connect syscall
         {
-            process_network(info, regs.orig_rax, regs.rsi, pid, regs);
+            process_network(info, regs.rsi, pid, regs);
         }
             break;
         case 9: //mmap syscall
@@ -69,7 +70,6 @@ void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
         default:
             info.warning = "";
             info.target = "";
-            info.sys_num = regs.orig_rax;
     }
 }
 
@@ -86,7 +86,7 @@ void check_prot(unsigned long long flags, syscall_info& info, user_regs_struct& 
 }
 
 
-void process_network(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
+void process_network(syscall_info& info, unsigned long long addr, pid_t pid,
                      user_regs_struct& regs) {
     std::string connection = get_connection(pid, addr);
     if (connection == "") {
@@ -101,11 +101,10 @@ void process_network(syscall_info& info, unsigned long long num, unsigned long l
         ptrace(PTRACE_SETREGS, pid, NULL, &regs);
     }
     info.target = connection;
-    info.sys_num = num;
 }
 
 
-void process_file(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
+void process_file(syscall_info& info, unsigned long long addr, pid_t pid,
     user_regs_struct& regs){
     std::string path = get_path(pid, addr);
     if (path == "") {
@@ -120,7 +119,6 @@ void process_file(syscall_info& info, unsigned long long num, unsigned long long
         ptrace(PTRACE_SETREGS, pid, NULL, &regs);
     }
     info.target = path;
-    info.sys_num = num;
 }
 
 
