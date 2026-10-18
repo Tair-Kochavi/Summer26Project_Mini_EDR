@@ -26,7 +26,8 @@ std::string get_connection(pid_t pid, unsigned long long addr);
 bool peek_for_connection(pid_t pid, unsigned long long addr, char* info, int offset);
 void process_network(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
     user_regs_struct& regs);
-bool check_prot(unsigned long long flags);
+void check_prot(unsigned long long flags, syscall_info& info, user_regs_struct& regs, pid_t pid);
+
 
 /**
  *
@@ -55,6 +56,16 @@ void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
             process_network(info, regs.orig_rax, regs.rsi, pid, regs);
         }
             break;
+        case 9: //mmap syscall
+        {
+            check_prot(regs.r8, info, regs, pid);
+        }
+            break;
+        case 10: //mprotect syscall
+        {
+            check_prot(regs.rdx, info, regs, pid);
+        }
+            break;
         default:
             info.warning = "";
             info.target = "";
@@ -63,11 +74,15 @@ void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
 }
 
 
-bool check_prot(unsigned long long flags) {
+void check_prot(unsigned long long flags, syscall_info& info, user_regs_struct& regs, pid_t pid) {
+    info.warning = "";
+    info.target = "";
     if ((flags & PROT_WRITE) && (flags & PROT_EXEC)) {
-        return true;
+        info.blocked = true;
+        info.error_code = -EPERM;
+        regs.orig_rax = -1;   //intentionally changing syscall service num to out of range num
+        ptrace(PTRACE_SETREGS, pid, NULL, &regs);
     }
-    return true;
 }
 
 
