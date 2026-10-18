@@ -12,7 +12,9 @@ namespace {
         {3, {"close", "resource release"}},
         {59, {"execve", "process execution"}},
         {257, {"openat", "file access"}},
-        {42, {"connect", "network connection"}}
+        {42, {"connect", "network connection"}},
+        {9, {"mmap", ""}},
+        {10, {"mprotect", ""}}
     };
 }
 
