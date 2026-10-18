@@ -10,6 +10,7 @@
 #include <sys/syscall.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/mman.h>
 
 #include "blacklist.h"
 #include "syscall_format.h"
@@ -25,6 +26,7 @@ std::string get_connection(pid_t pid, unsigned long long addr);
 bool peek_for_connection(pid_t pid, unsigned long long addr, char* info, int offset);
 void process_network(syscall_info& info, unsigned long long num, unsigned long long addr, pid_t pid,
     user_regs_struct& regs);
+bool check_prot(unsigned long long flags);
 
 /**
  *
@@ -58,6 +60,14 @@ void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
             info.target = "";
             info.sys_num = regs.orig_rax;
     }
+}
+
+
+bool check_prot(unsigned long long flags) {
+    if ((flags & PROT_WRITE) && (flags & PROT_EXEC)) {
+        return true;
+    }
+    return true;
 }
 
 
