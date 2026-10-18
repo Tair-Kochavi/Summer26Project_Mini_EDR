@@ -59,7 +59,7 @@ void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
             break;
         case 9: //mmap syscall
         {
-            check_prot(regs.r8, info, regs, pid);
+            check_prot(regs.rdx, info, regs, pid);
         }
             break;
         case 10: //mprotect syscall

@@ -52,6 +52,7 @@ void log_syscall(const syscall_info& info) {
         }
         if (info.sys_num == 10) { //mprotect syscall
             std::cout << " | [BLOCKED] tried to make existing memory writable and executable: permission denied\n";
+            return;
         }
         std::cout << " | [BLOCKED] tried to access " << info.target << ": permission denied \n";
         return;
