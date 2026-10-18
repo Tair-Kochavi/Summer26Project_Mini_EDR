@@ -13,8 +13,8 @@ namespace {
         {59, {"execve", "process execution"}},
         {257, {"openat", "file access"}},
         {42, {"connect", "network connection"}},
-        {9, {"mmap", ""}},
-        {10, {"mprotect", ""}}
+        {9, {"mmap", "memory allocation"}},
+        {10, {"mprotect", "memory permission change"}}
     };
 }
 
@@ -45,6 +45,13 @@ void log_syscall(const syscall_info& info) {
         if (info.sys_num == 42) { //connect syscall
             std::cout << " | [BLOCKED] tried to connect to " << info.target << ": connection not permitted \n";
             return;
+        }
+        if (info.sys_num == 9) { //mmap syscall
+            std::cout << " | [BLOCKED] tried to allocate writable and executable memory: permission denied \n";
+            return;
+        }
+        if (info.sys_num == 10) { //mprotect syscall
+            std::cout << " | [BLOCKED] tried to make existing memory writable and executable: permission denied\n";
         }
         std::cout << " | [BLOCKED] tried to access " << info.target << ": permission denied \n";
         return;
