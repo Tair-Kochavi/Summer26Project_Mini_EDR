@@ -210,26 +210,42 @@ pid_t trace_target(pid_t pid) {
     int status;
     struct user_regs_struct regs;
     std::unordered_map<pid_t, syscall_info> processes;
+    syscall_info info;
+    processes.insert({pid, info});
 
     wait(&status);
     ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK);
-    while (!WIFEXITED(status)) {
-        syscall_info info;
+    while (!processes.empty()) {
 
         //wait for the program to use a syscall
         ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-        waitpid(-1, &status, __WALL);
-        if (!WIFEXITED(status)) {
-            ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-            handle_syscall(info, regs, pid);
+        pid_t curr = waitpid(-1, &status, __WALL);
+
+        if (WIFEXITED(status)) { //process died
+            processes.erase(curr);
         }
-        ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-        waitpid(-1, &status, __WALL);
+        else if (WIFSTOPPED(status)) {
+            int event = status >> 16;
+            if (event == PTRACE_EVENT_CLONE || event == PTRACE_EVENT_FORK || event == PTRACE_EVENT_VFORK) {
+                syscall_info new_info;
+                unsigned long long new_pid;
+                if (ptrace(PTRACE_GETEVENTMSG, curr, 0, &new_pid) == 0) {
+                    processes.insert({new_pid, new_info});
+                }
+            }
+            if (WSTOPSIG(status) == SIGTRAP) {
+                ptrace(PTRACE_GETREGS, curr, NULL, &regs);
+                handle_syscall(processes.find(curr)->second, regs, curr);
+            }
+        }
+
+        ptrace(PTRACE_SYSCALL, curr, NULL, NULL);
+        curr = waitpid(-1, &status, __WALL);
         if (!WIFEXITED(status)) {
-            ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+            ptrace(PTRACE_GETREGS, curr, NULL, &regs);
             if (info.blocked) {
                 regs.rax = info.error_code;      //set error code
-                ptrace(PTRACE_SETREGS, pid, NULL, &regs);
+                ptrace(PTRACE_SETREGS, curr, NULL, &regs);
             }
             info.ret_val = static_cast<long>(regs.rax);
             log_syscall(info);
