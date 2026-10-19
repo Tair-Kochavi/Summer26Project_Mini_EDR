@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <unordered_map>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <sys/user.h>
@@ -208,20 +209,22 @@ bool peek_for_connection(pid_t pid, unsigned long long addr, char* info, int off
 pid_t trace_target(pid_t pid) {
     int status;
     struct user_regs_struct regs;
+    std::unordered_map<pid_t, syscall_info> processes;
 
     wait(&status);
+    ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK);
     while (!WIFEXITED(status)) {
         syscall_info info;
 
         //wait for the program to use a syscall
         ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-        wait(&status);
+        waitpid(-1, &status, __WALL);
         if (!WIFEXITED(status)) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
             handle_syscall(info, regs, pid);
         }
         ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-        wait(&status);
+        waitpid(-1, &status, __WALL);
         if (!WIFEXITED(status)) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
             if (info.blocked) {
