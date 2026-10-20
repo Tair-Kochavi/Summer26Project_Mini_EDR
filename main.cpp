@@ -215,7 +215,7 @@ pid_t trace_target(pid_t pid) {
     processes.insert({pid, info});
 
     wait(&status);
-    ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK);
+    ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACEEXEC);
     ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
 
     while (!processes.empty()) {
@@ -236,6 +236,12 @@ pid_t trace_target(pid_t pid) {
                 if (ptrace(PTRACE_GETEVENTMSG, curr, 0, &new_pid) == 0) {
                     processes.insert({new_pid, new_info});
                 }
+            }
+            //if execve succeeded, reset the current_info
+            else if (event == PTRACE_EVENT_EXEC) {
+                current_info.blocked = false;
+                current_info.warning = "";
+                current_info.target = "";
             }
             else if (signal == SIGTRAP) {
                 //handle syscall entry
