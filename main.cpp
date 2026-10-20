@@ -215,16 +215,18 @@ pid_t trace_target(pid_t pid) {
 
     wait(&status);
     ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK);
+    ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+
     while (!processes.empty()) {
 
-        //wait for the program to use a syscall
-        ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
         pid_t curr = waitpid(-1, &status, __WALL);
 
         if (WIFEXITED(status)) { //process died
             processes.erase(curr);
+            continue;               //in order to not get to PTRACE_SYSCALL
         }
-        else if (WIFSTOPPED(status)) {
+        syscall_info& current_info = processes.at(curr);
+        if (WIFSTOPPED(status)) {
             int event = status >> 16;
             if (event == PTRACE_EVENT_CLONE || event == PTRACE_EVENT_FORK || event == PTRACE_EVENT_VFORK) {
                 syscall_info new_info;
@@ -234,22 +236,26 @@ pid_t trace_target(pid_t pid) {
                 }
             }
             if (WSTOPSIG(status) == SIGTRAP) {
-                ptrace(PTRACE_GETREGS, curr, NULL, &regs);
-                handle_syscall(processes.find(curr)->second, regs, curr);
+                //handle syscall entry
+                if (!current_info.in_syscall) {
+                    ptrace(PTRACE_GETREGS, curr, NULL, &regs);
+                    handle_syscall(current_info, regs, curr);
+                    current_info.in_syscall = true;
+                }
+                //handle syscall exit
+                else {
+                    ptrace(PTRACE_GETREGS, curr, NULL, &regs);
+                    if (current_info.blocked) {
+                        regs.rax = current_info.error_code;   //set error code
+                        ptrace(PTRACE_SETREGS, curr, NULL, &regs);
+                    }
+                    current_info.ret_val = static_cast<long>(regs.rax);
+                    log_syscall(current_info);
+                    current_info.in_syscall = false;
+                }
             }
         }
-
         ptrace(PTRACE_SYSCALL, curr, NULL, NULL);
-        curr = waitpid(-1, &status, __WALL);
-        if (!WIFEXITED(status)) {
-            ptrace(PTRACE_GETREGS, curr, NULL, &regs);
-            if (info.blocked) {
-                regs.rax = info.error_code;      //set error code
-                ptrace(PTRACE_SETREGS, curr, NULL, &regs);
-            }
-            info.ret_val = static_cast<long>(regs.rax);
-            log_syscall(info);
-        }
     }
 
     return status;
