@@ -221,6 +221,7 @@ pid_t trace_target(pid_t pid) {
     while (!processes.empty()) {
 
         pid_t curr = waitpid(-1, &status, __WALL);
+        int signal = WSTOPSIG(status);
 
         if (WIFEXITED(status) || WIFSIGNALED(status)) { //process exited or terminated by an uncaught signal
             processes.erase(curr);
@@ -236,7 +237,7 @@ pid_t trace_target(pid_t pid) {
                     processes.insert({new_pid, new_info});
                 }
             }
-            if (WSTOPSIG(status) == SIGTRAP) {
+            else if (signal == SIGTRAP) {
                 //handle syscall entry
                 if (!current_info.in_syscall) {
                     ptrace(PTRACE_GETREGS, curr, NULL, &regs);
@@ -260,7 +261,10 @@ pid_t trace_target(pid_t pid) {
                 }
             }
         }
-        ptrace(PTRACE_SYSCALL, curr, NULL, NULL);
+        if (signal == SIGTRAP || signal == SIGSTOP) { //if it's a syscall boundry or new process creation
+            signal = 0;
+        }
+        ptrace(PTRACE_SYSCALL, curr, NULL, (void*)(intptr_t)signal);
     }
 
     return status;
