@@ -11,6 +11,7 @@ struct syscall_info {
     bool blocked = false;
     long error_code = 0;
     bool in_syscall = false;
+    pid_t pid;
 };
 
 std::pair<std::string, std::string> get_syscall_name(unsigned long long num);
