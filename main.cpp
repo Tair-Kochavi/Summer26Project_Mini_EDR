@@ -37,6 +37,7 @@ void check_prot(unsigned long long flags, syscall_info& info, user_regs_struct& 
  */
 void handle_syscall(syscall_info& info, user_regs_struct& regs, pid_t pid) {
     info.sys_num = regs.orig_rax;
+    info.pid = pid;
     switch (regs.orig_rax) {
         case 2:  //open syscall
         {
