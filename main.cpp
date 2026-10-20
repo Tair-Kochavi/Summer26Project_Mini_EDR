@@ -253,6 +253,10 @@ pid_t trace_target(pid_t pid) {
                     current_info.ret_val = static_cast<long>(regs.rax);
                     log_syscall(current_info);
                     current_info.in_syscall = false;
+                    //resetting current_info
+                    current_info.blocked = false;
+                    current_info.warning = "";
+                    current_info.target = "";
                 }
             }
         }
