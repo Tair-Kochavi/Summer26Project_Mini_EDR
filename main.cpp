@@ -221,7 +221,7 @@ pid_t trace_target(pid_t pid) {
 
         pid_t curr = waitpid(-1, &status, __WALL);
 
-        if (WIFEXITED(status)) { //process died
+        if (WIFEXITED(status) || WIFSIGNALED(status)) { //process exited or terminated by an uncaught signal
             processes.erase(curr);
             continue;               //in order to not get to PTRACE_SYSCALL
         }
