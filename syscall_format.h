@@ -10,6 +10,7 @@ struct syscall_info {
     std::string warning;
     bool blocked = false;
     long error_code = 0;
+    bool in_syscall = false;
 };
 
 std::pair<std::string, std::string> get_syscall_name(unsigned long long num);
