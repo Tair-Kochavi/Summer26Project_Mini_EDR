@@ -40,6 +40,7 @@ void log_syscall(const syscall_info& info) {
     if (sys_info.first == "") { //syscall not found in map
         return;
     }
+    std::cout << "[PID] " << info.pid << " | ";
     std::cout << "[SYSCALL] " << sys_info.first;
     if (info.blocked) {
         if (info.sys_num == 42) { //connect syscall
