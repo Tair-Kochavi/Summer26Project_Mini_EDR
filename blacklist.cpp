@@ -19,10 +19,10 @@ bool check_path(const std::string& path) {
         clean_path.pop_back();
     }
 
-    size_t pos = path.find_last_of('/');
+    size_t pos = clean_path.find_last_of('/');
     std::string name = clean_path;         //if  / wasn't found - the path is the file name
     if (pos != std::string::npos) {     //if it was found - the file name appears after the last /
-        name = path.substr(pos + 1);
+        name = clean_path.substr(pos + 1);
     }
     if (blacklist.find(name) != blacklist.end()) {
         return true;
