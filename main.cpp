@@ -191,6 +191,10 @@ std::string get_connection(pid_t pid, unsigned long long addr) {
         inet_ntop(AF_INET6, info + 8, buff, MAX_V6);
         return std::string(buff) + ":" + std::to_string(ntohs(port));
     }
+    else if (ipv == AF_UNIX) {
+        return get_path(pid, addr + 2);
+    }
+    return "";
 }
 
 
