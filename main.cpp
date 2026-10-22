@@ -227,7 +227,7 @@ pid_t trace_target(pid_t pid) {
             processes.erase(curr);
             continue;               //in order to not get to PTRACE_SYSCALL
         }
-        syscall_info& current_info = processes.at(curr);
+        syscall_info& current_info = processes[curr]; //using [] for the case that the child process gets here before parent
         if (WIFSTOPPED(status)) {
             int event = status >> 16;
             if (event == PTRACE_EVENT_CLONE || event == PTRACE_EVENT_FORK || event == PTRACE_EVENT_VFORK) {
