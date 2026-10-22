@@ -242,7 +242,6 @@ pid_t trace_target(pid_t pid) {
             else if (event == PTRACE_EVENT_EXEC) {
                 current_info.blocked = false;
                 current_info.warning = "";
-                current_info.target = "";
             }
             else if (signal == SIGTRAP) {
                 //handle syscall entry
@@ -300,6 +299,10 @@ pid_t run_target(char* args[]) {
 
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Error: No target program provided \n";
+        return 1;
+    }
     char **args_for_exec = argv + 1;
     if (run_target(args_for_exec) == -1) {
         return -1;
