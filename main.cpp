@@ -175,21 +175,22 @@ std::string get_connection(pid_t pid, unsigned long long addr) {
         inet_ntop(AF_INET, info + 4, buff, MAX_V4);
         return std::string(buff) + ":" + std::to_string(ntohs(port));
     }
+    else if (ipv == AF_INET6) {
+        //handling IPv6
+        addr += 8;
+        if (!peek_for_connection(pid, addr, info, 8)) {
+            return "";
+        }
 
-    //handling IPv6
-    addr += 8;
-    if (!peek_for_connection(pid, addr, info, 8)) {
-        return "";
+        addr += 8;
+        if (!peek_for_connection(pid, addr, info, 16)) {
+            return "";
+        }
+
+        char buff[MAX_V6];
+        inet_ntop(AF_INET6, info + 8, buff, MAX_V6);
+        return std::string(buff) + ":" + std::to_string(ntohs(port));
     }
-
-    addr += 8;
-    if (!peek_for_connection(pid, addr, info, 16)) {
-        return "";
-    }
-
-    char buff[MAX_V6];
-    inet_ntop(AF_INET6, info + 8, buff, MAX_V6);
-    return std::string(buff) + ":" + std::to_string(ntohs(port));
 }
 
 
