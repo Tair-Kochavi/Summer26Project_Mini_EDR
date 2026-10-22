@@ -36,6 +36,13 @@ int main() {
         memset(bad_str, 'A', 4096);
         open(bad_str, O_RDONLY);
 
+        // 3.6: NEW - Trailing slash bypass attempt on blacklisted files
+        std::cout << "--- [3.6] Trailing slash bypass on secret.txt/ and dir/no_open.txt/// ---\n";
+        int fd3 = open("secret.txt/", O_RDONLY);
+        if (fd3 < 0) perror("Trailing slash 1 blocked as expected");
+        int fd4 = open("dir/no_open.txt///", O_RDONLY);
+        if (fd4 < 0) perror("Trailing slash 2 blocked as expected");
+
         return 0;
     }
 
